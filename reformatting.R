@@ -1,4 +1,4 @@
-# V. Stevens 10/8/24
+# V. Stevens Oct 2024
 # Data: 2023 total no shows, 2023 sat no shows, 2024 total no shows, 2024 sat no shows
 # 2024 data until 10/8/24
 # This script reformats data for downstream analysis of no show rates
@@ -6,7 +6,8 @@
 ###############
 ### Imports ###
 ###############
-setwd("C:\\Users\\m296398\\Desktop\\no_show_stats")
+setwd("C:\\Users\\m296398\\Desktop\\no_show_stats") # change working dir as needed
+
 install.packages("openxlsx") # for reading/writing excel files
 install.packages("dplyr") # for data manipulation
 install.packages("hms") # for time-only datatype
@@ -116,16 +117,16 @@ scheduling_providers <- scheduling_providers %>%
   arrange(appt.schdlng.prvdr)
 
 
-# and read into excel (function)
-save_unique_values_to_excel <- function(unique_values, file_name) {
-  # Convert the unique values into a dataframe
-  unique_df <- data.frame(UniqueValues = unique_values)
-  
-  # Write the dataframe to an Excel file
-  write.xlsx(unique_df, file = file_name)
-}
-
-save_unique_values_to_excel(scheduling_providers, "scheduling_providers.xlsx")
+# # and read into excel (function)
+# save_unique_values_to_excel <- function(unique_values, file_name) {
+#   # Convert the unique values into a dataframe
+#   unique_df <- data.frame(UniqueValues = unique_values)
+#   
+#   # Write the dataframe to an Excel file
+#   write.xlsx(unique_df, file = file_name)
+# }
+# 
+# save_unique_values_to_excel(scheduling_providers, "scheduling_providers.xlsx")
 
 ## Reformat providers and their specialties, and filter
 # Remove the following: EIGENMANN_K, ERTL_J, ESTRADA_Y, GERTEN_T, GOLDTHORPE_R, 
@@ -302,8 +303,8 @@ scheduling_providers <- scheduling_providers %>%
 # alphabetize by specialty
 scheduling_providers <- scheduling_providers %>%
   arrange(appt.schdlng.prvdr.spclty)
-# save to excel for our purposes
-save_unique_values_to_excel(scheduling_providers, "scheduling_providers_updated.xlsx")
+# # save to excel for our purposes
+# save_unique_values_to_excel(scheduling_providers, "scheduling_providers_updated.xlsx")
 
 ## Include weekday times during business hours (exclude Thursday nights, 4pm on)
 sort(unique(weekdays_2023$apptstarttime))
@@ -377,8 +378,8 @@ prov_week_2023 <- prov_week_2023 %>%
 # alphabetize by specialty
 prov_week_2023 <- prov_week_2023 %>%
   arrange(appt.schdlng.prvdr.spclty)
-# save to excel for our purposes
-save_unique_values_to_excel(prov_week_2023, "2023_weekday_providers.xlsx")
+# # save to excel for our purposes
+# save_unique_values_to_excel(prov_week_2023, "2023_weekday_providers.xlsx")
 
 ## 2023 saturday providers
 prov_sats_2023_1 <- completed_sats_2023 %>% select(appt.schdlng.prvdr, appt.schdlng.prvdr.spclty)
@@ -389,7 +390,7 @@ prov_sats_2023 <- prov_sats_2023 %>%
   distinct(appt.schdlng.prvdr, .keep_all = TRUE) # 24 total
 prov_sats_2023 <- prov_sats_2023 %>%
   arrange(appt.schdlng.prvdr.spclty)
-save_unique_values_to_excel(prov_sats_2023, "2023_sats_providers.xlsx")
+# save_unique_values_to_excel(prov_sats_2023, "2023_sats_providers.xlsx")
 
 ## 2024 weekday providers
 prov_week_2024_1 <- completed_appts_2024 %>% select(appt.schdlng.prvdr, appt.schdlng.prvdr.spclty)
@@ -400,7 +401,7 @@ prov_week_2024 <- prov_week_2024 %>%
   distinct(appt.schdlng.prvdr, .keep_all = TRUE) # 87 total
 prov_week_2024 <- prov_week_2024 %>%
   arrange(appt.schdlng.prvdr.spclty)
-save_unique_values_to_excel(prov_week_2024, "2024_weekday_providers.xlsx")
+# save_unique_values_to_excel(prov_week_2024, "2024_weekday_providers.xlsx")
 
 ## 2024 saturday providers
 prov_sats_2024_1 <- completed_sats_2024 %>% select(appt.schdlng.prvdr, appt.schdlng.prvdr.spclty)
@@ -411,7 +412,7 @@ prov_sats_2024 <- prov_sats_2024 %>%
   distinct(appt.schdlng.prvdr, .keep_all = TRUE) # 19 total
 prov_sats_2024 <- prov_sats_2024 %>%
   arrange(appt.schdlng.prvdr.spclty)
-save_unique_values_to_excel(prov_sats_2024, "2024_sats_providers.xlsx")
+# save_unique_values_to_excel(prov_sats_2024, "2024_sats_providers.xlsx")
 
 
 # final check for empty slots of necessary data (visual inspection)
@@ -425,9 +426,258 @@ sapply(noshows_sats_2023, function(x) sum(is.na(x)))
 sapply(noshows_sats_2024, function(x) sum(is.na(x)))
 # good to go :)
 
-# limitation: can't tell if new patient, # distinct patients, demographics, transition of care, in person or telehealth, etc.
-# also appts with np, rn , etc. not differentiated for primary and specialty care in this analysis
+## Combined data (completed appts + no shows), per year
+data_2023 <- bind_rows(completed_appts_2023, completed_sats_2023, noshows_2023, noshows_sats_2023)
+# delete rogue 415 am time in 2023 (this is outside business hours on thursday)
+data_2023 <- data_2023 %>%
+  filter(apptstarttime != as_hms("04:15:00"))
+# and the random MAMMOs at and after 4 pm for uniform afternoon times
+data_2023 <- data_2023 %>%
+  filter(apptstarttime < as_hms("16:00:00")) # 7731 x 9
+# remove radiation oncology because too few counts
+data_2023 <- data_2023 %>%
+  filter(appt.schdlng.prvdr.spclty != "Radiation Oncology") # 7717 x 9
+# and finish making combined data for 2023
+data_2023 <- data_2023 %>%
+  select(-apptcheckintime, -apptcancelreason) # 7731 x 7, 6653 complete, 1064 no shows
+sapply(data_2023, function(x) sum(is.na(x)))
 
-# Notes for research project purposes:
-# selected primary and specialty care only (no family wellness)
-# took out providers that didn't have discernible specialty, or focused mostly on transition/meds reconciliation
+data_2024 <- bind_rows(completed_appts_2024, completed_sats_2024, noshows_2024, noshows_sats_2024)
+data_2024 <- data_2024 %>%
+  select(-apptcheckintime, -apptcancelreason) # 5712 x 7, 4950 complete, 762 no shows
+sapply(data_2024, function(x) sum(is.na(x))) 
+
+# categorization rewording of completed vs no show
+data_2023 <- data_2023 %>%
+  mutate(apptslotstatus = case_when(
+    apptslotstatus == "3 - Checked Out" ~ "Completed",
+    apptslotstatus == "4 - Charge Entered" ~ "Completed",
+    apptslotstatus == "x - Cancelled" ~ "No Show",
+    TRUE ~ apptslotstatus  # Keep other values unchanged
+  ))
+data_2024 <- data_2024 %>%
+  mutate(apptslotstatus = case_when(
+    apptslotstatus == "3 - Checked Out" ~ "Completed",
+    apptslotstatus == "4 - Charge Entered" ~ "Completed",
+    apptslotstatus == "x - Cancelled" ~ "No Show",
+    TRUE ~ apptslotstatus  # Keep other values unchanged
+  ))
+
+# time categorization into ranges (AM vs PM)
+sort(unique(data_2023$apptstarttime))
+sort(unique(data_2024$apptstarttime))
+# there were some appts 7-8 am saturdays in 2023, categorized as "early AM"
+data_2023 <- data_2023 %>%
+  mutate(apptstarttime = case_when(
+    apptstarttime < as_hms("08:00:00") ~ "Early AM",
+    apptstarttime >= as_hms("08:00:00") & apptstarttime < as_hms("12:00:00") ~ "AM",
+    apptstarttime >= as_hms("12:00:00") ~ "PM"
+  ))
+data_2024 <- data_2024 %>%
+  mutate(apptstarttime = case_when(
+    apptstarttime < as_hms("12:00:00") ~ "AM",
+    apptstarttime >= as_hms("12:00:00") ~ "PM"
+  ))
+unique(data_2023$apptstarttime)
+unique(data_2024$apptstarttime)
+
+# Reformat months to have only the first letter capitalized
+data_2023$apptmnth <- str_to_title(str_to_lower(data_2023$apptmnth))
+data_2024$apptmnth <- str_to_title(str_to_lower(data_2024$apptmnth))
+data_2023$apptmnth <- str_trim(data_2023$apptmnth)
+data_2024$apptmnth <- str_trim(data_2024$apptmnth)
+
+# get rid of extra spaces in day
+data_2023$apptday <- str_trim(data_2023$apptday)
+data_2024$apptday <- str_trim(data_2024$apptday)
+
+
+# # Find the unique levels across both data frames for `apptmnth` and `apptstarttime`
+# all_month_levels <- union(levels(data_2023$apptmnth), levels(data_2024$apptmnth))
+# all_time_levels <- union(levels(data_2023$apptstarttime), levels(data_2024$apptstarttime))
+# 
+# # Apply the standardized levels to both data frames
+# data_2023$apptmnth <- factor(data_2023$apptmnth, levels = all_month_levels, ordered = TRUE)
+# data_2024$apptmnth <- factor(data_2024$apptmnth, levels = all_month_levels, ordered = TRUE)
+# 
+# data_2023$apptstarttime <- factor(data_2023$apptstarttime, levels = all_time_levels, ordered = TRUE)
+# data_2024$apptstarttime <- factor(data_2024$apptstarttime, levels = all_time_levels, ordered = TRUE)
+
+
+# Combine Fam Med and Internal Med into primary care
+unique(data_2024$appt.schdlng.prvdr.spclty)
+data_2024 <- data_2024 %>%
+  mutate(appt.schdlng.prvdr.spclty = case_when(
+    appt.schdlng.prvdr.spclty %in% c("Internal Medicine", "Family Medicine") ~ "Primary Care",
+    TRUE ~ appt.schdlng.prvdr.spclty  # Keep other specialties unchanged
+  ))
+data_2023 <- data_2023 %>%
+  mutate(appt.schdlng.prvdr.spclty = case_when(
+    appt.schdlng.prvdr.spclty %in% c("Internal Medicine", "Family Medicine") ~ "Primary Care",
+    TRUE ~ appt.schdlng.prvdr.spclty  # Keep other specialties unchanged
+  ))
+unique(data_2024$appt.schdlng.prvdr.spclty)
+unique(data_2023$appt.schdlng.prvdr.spclty)
+
+# and all pediatric subspecialties under pediatric umbrella
+data_2024 <- data_2024 %>%
+  mutate(appt.schdlng.prvdr.spclty = case_when(
+    grepl("Pediat", appt.schdlng.prvdr.spclty, ignore.case = TRUE) ~ "Pediatric Medicine",
+    TRUE ~ appt.schdlng.prvdr.spclty  # Keep other specialties unchanged
+  ))
+data_2023 <- data_2023 %>%
+  mutate(appt.schdlng.prvdr.spclty = case_when(
+    grepl("Pediat", appt.schdlng.prvdr.spclty, ignore.case = TRUE) ~ "Pediatric Medicine",
+    TRUE ~ appt.schdlng.prvdr.spclty  # Keep other specialties unchanged
+  ))
+unique(data_2024$appt.schdlng.prvdr.spclty)
+unique(data_2023$appt.schdlng.prvdr.spclty)
+
+# and all surgical subspecialties under "Surgery"
+data_2024 <- data_2024 %>%
+  mutate(appt.schdlng.prvdr.spclty = case_when(
+    grepl("Surgery", appt.schdlng.prvdr.spclty, ignore.case = TRUE) ~ "Surgery",
+    TRUE ~ appt.schdlng.prvdr.spclty  # Keep other specialties unchanged
+  ))
+data_2023 <- data_2023 %>%
+  mutate(appt.schdlng.prvdr.spclty = case_when(
+    grepl("Surgery", appt.schdlng.prvdr.spclty, ignore.case = TRUE) ~ "Surgery",
+    TRUE ~ appt.schdlng.prvdr.spclty  # Keep other specialties unchanged
+  ))
+unique(data_2024$appt.schdlng.prvdr.spclty)
+data_2024 <- data_2024 %>%
+  mutate(appt.schdlng.prvdr.spclty = case_when(
+    appt.schdlng.prvdr.spclty %in% c("Podiatry") ~ "Surgery",
+    TRUE ~ appt.schdlng.prvdr.spclty  # Keep other specialties unchanged
+  ))
+data_2023 <- data_2023 %>%
+  mutate(appt.schdlng.prvdr.spclty = case_when(
+    appt.schdlng.prvdr.spclty %in% c("Podiatry") ~ "Surgery",
+    TRUE ~ appt.schdlng.prvdr.spclty  # Keep other specialties unchanged
+  ))
+data_2024 <- data_2024 %>%
+  mutate(appt.schdlng.prvdr.spclty = case_when(
+    appt.schdlng.prvdr.spclty %in% c("Surgery") ~ "Surgical Care",
+    TRUE ~ appt.schdlng.prvdr.spclty  # Keep other specialties unchanged
+  ))
+data_2023 <- data_2023 %>%
+  mutate(appt.schdlng.prvdr.spclty = case_when(
+    appt.schdlng.prvdr.spclty %in% c("Surgery") ~ "Surgical Care",
+    TRUE ~ appt.schdlng.prvdr.spclty  # Keep other specialties unchanged
+  ))
+unique(data_2024$appt.schdlng.prvdr.spclty)
+unique(data_2023$appt.schdlng.prvdr.spclty)
+
+# and all medical subspecialties under "Medical Specialties"
+data_2024 <- data_2024 %>%
+  mutate(appt.schdlng.prvdr.spclty = case_when(
+    appt.schdlng.prvdr.spclty %in% c("Cardiology", "Pulmonary Medicine", "Gastroenterology", "Rheumatology", "Allergy/Immunology", "Neurology", "Nephrology", "Infectious Disease", "Dermatology", "Endocrinology") ~ "Medical Specialties",
+    TRUE ~ appt.schdlng.prvdr.spclty  # Keep other specialties unchanged
+  ))
+data_2023 <- data_2023 %>%
+  mutate(appt.schdlng.prvdr.spclty = case_when(
+    appt.schdlng.prvdr.spclty %in% c("Cardiology", "Pulmonary Medicine", "Gastroenterology", "Rheumatology", "Allergy/Immunology", "Neurology", "Nephrology", "Infectious Disease", "Dermatology") ~ "Medical Specialties",
+    TRUE ~ appt.schdlng.prvdr.spclty  # Keep other specialties unchanged
+  ))
+unique(data_2024$appt.schdlng.prvdr.spclty)
+unique(data_2023$appt.schdlng.prvdr.spclty)
+
+# and diagnostic specialties
+data_2024 <- data_2024 %>%
+  mutate(appt.schdlng.prvdr.spclty = case_when(
+    appt.schdlng.prvdr.spclty %in% c("Laboratory Medicine/Diagnostics", "Diagnostic Radiology") ~ "Diagnostic Specialties",
+    TRUE ~ appt.schdlng.prvdr.spclty  # Keep other specialties unchanged
+  ))
+data_2023 <- data_2023 %>%
+  mutate(appt.schdlng.prvdr.spclty = case_when(
+    appt.schdlng.prvdr.spclty %in% c("Laboratory Medicine/Diagnostics", "Diagnostic Radiology") ~ "Diagnostic Specialties",
+    TRUE ~ appt.schdlng.prvdr.spclty  # Keep other specialties unchanged
+  ))
+unique(data_2024$appt.schdlng.prvdr.spclty)
+unique(data_2023$appt.schdlng.prvdr.spclty)
+
+# rename psych and beh health
+data_2024 <- data_2024 %>%
+  mutate(appt.schdlng.prvdr.spclty = case_when(
+    appt.schdlng.prvdr.spclty %in% c("Psychiatry/Psychology") ~ "Psychiatry & Behavioral Health",
+    TRUE ~ appt.schdlng.prvdr.spclty  # Keep other specialties unchanged
+  ))
+data_2023 <- data_2023 %>%
+  mutate(appt.schdlng.prvdr.spclty = case_when(
+    appt.schdlng.prvdr.spclty %in% c("Psychiatry/Psychology") ~ "Psychiatry & Behavioral Health",
+    TRUE ~ appt.schdlng.prvdr.spclty  # Keep other specialties unchanged
+  ))
+unique(data_2024$appt.schdlng.prvdr.spclty)
+unique(data_2023$appt.schdlng.prvdr.spclty)
+
+# rename women's health
+data_2024 <- data_2024 %>%
+  mutate(appt.schdlng.prvdr.spclty = case_when(
+    appt.schdlng.prvdr.spclty %in% c("Gynecology") ~ "Women's Health",
+    TRUE ~ appt.schdlng.prvdr.spclty  # Keep other specialties unchanged
+  ))
+data_2023 <- data_2023 %>%
+  mutate(appt.schdlng.prvdr.spclty = case_when(
+    appt.schdlng.prvdr.spclty %in% c("Gynecology") ~ "Women's Health",
+    TRUE ~ appt.schdlng.prvdr.spclty  # Keep other specialties unchanged
+  ))
+unique(data_2024$appt.schdlng.prvdr.spclty)
+unique(data_2023$appt.schdlng.prvdr.spclty)
+
+# rename eye stuff
+data_2024 <- data_2024 %>%
+  mutate(appt.schdlng.prvdr.spclty = case_when(
+    appt.schdlng.prvdr.spclty %in% c("Ophthalmology/Optometry") ~ "Eye & Vision Care",
+    TRUE ~ appt.schdlng.prvdr.spclty  # Keep other specialties unchanged
+  ))
+data_2023 <- data_2023 %>%
+  mutate(appt.schdlng.prvdr.spclty = case_when(
+    appt.schdlng.prvdr.spclty %in% c("Ophthalmology/Optometry") ~ "Eye & Vision Care",
+    TRUE ~ appt.schdlng.prvdr.spclty  # Keep other specialties unchanged
+  ))
+unique(data_2024$appt.schdlng.prvdr.spclty)
+unique(data_2023$appt.schdlng.prvdr.spclty)
+
+# rename ent stuff
+data_2024 <- data_2024 %>%
+  mutate(appt.schdlng.prvdr.spclty = case_when(
+    appt.schdlng.prvdr.spclty %in% c("Otolaryngology/Audiology") ~ "Otolaryngology & Audiologic Care",
+    TRUE ~ appt.schdlng.prvdr.spclty  # Keep other specialties unchanged
+  ))
+data_2023 <- data_2023 %>%
+  mutate(appt.schdlng.prvdr.spclty = case_when(
+    appt.schdlng.prvdr.spclty %in% c("Otolaryngology/Audiology") ~ "Otolaryngology & Audiologic Care",
+    TRUE ~ appt.schdlng.prvdr.spclty  # Keep other specialties unchanged
+  ))
+unique(data_2024$appt.schdlng.prvdr.spclty)
+unique(data_2023$appt.schdlng.prvdr.spclty)
+
+# group rehab and supportive care
+data_2024 <- data_2024 %>%
+  mutate(appt.schdlng.prvdr.spclty = case_when(
+    appt.schdlng.prvdr.spclty %in% c("Wound Care", "Occupational Therapy", "Physical Therapy", "Speech Language Pathology", "Nutrition") ~ "Rehabilitative & Supportive Care",
+    TRUE ~ appt.schdlng.prvdr.spclty  # Keep other specialties unchanged
+  ))
+data_2023 <- data_2023 %>%
+  mutate(appt.schdlng.prvdr.spclty = case_when(
+    appt.schdlng.prvdr.spclty %in% c("Wound Care", "Occupational Therapy", "Physical Therapy", "Speech Language Pathology", "Nutrition") ~ "Rehabilitative & Supportive Care",
+    TRUE ~ appt.schdlng.prvdr.spclty  # Keep other specialties unchanged
+  ))
+unique(data_2024$appt.schdlng.prvdr.spclty)
+unique(data_2023$appt.schdlng.prvdr.spclty)
+
+# rename acupuncture
+data_2024 <- data_2024 %>%
+  mutate(appt.schdlng.prvdr.spclty = case_when(
+    appt.schdlng.prvdr.spclty %in% c("Acupuncture/Herbal Medicine") ~ "Complementary & Alternative Medicine",
+    TRUE ~ appt.schdlng.prvdr.spclty  # Keep other specialties unchanged
+  ))
+data_2023 <- data_2023 %>%
+  mutate(appt.schdlng.prvdr.spclty = case_when(
+    appt.schdlng.prvdr.spclty %in% c("Acupuncture/Herbal Medicine") ~ "Complementary & Alternative Medicine",
+    TRUE ~ appt.schdlng.prvdr.spclty  # Keep other specialties unchanged
+  ))
+unique(data_2024$appt.schdlng.prvdr.spclty)
+unique(data_2023$appt.schdlng.prvdr.spclty)
+
+combined_data <- bind_rows(data_2023, data_2024) # 13429 x 7
